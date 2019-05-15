@@ -1,0 +1,64 @@
+
+
+    博客园
+    首页
+    新随笔
+    联系
+    订阅
+    管理
+
+Docker环境中部署DzzOffice 1.2.5.2
+
+整体思路：
+
+1、官方获取mysql、php+apache镜像；
+
+2、基于php+apache，创建DzzOffice镜像；
+
+3、启动mysql镜像；
+
+4、启动DzzOffice镜像，链接mysql镜像，访问Mysql数据库。
+
+下面开始动手：
+
+一、获取mysql镜像，并启动服务
+
+docker pull mysql:5.7
+docker run --name mysql -e MYSQL_ROOT_PASSWORD=root -d mysql:5.7
+
+二、基于php:5.6-apache镜像，创建dzzoffice镜像（发布dzzoffice）
+
+1、创建image-dzzoffice目录；
+
+2、下载dzzoffice安装包：http://down.dzzoffice.com/dzzoffice1.2/dzzoffice1.2.5.2_SC_UTF8.zip
+
+3、将安装包解压，将其中的upload目录整体复制到image-dzzoffice目录下；
+
+4、在image-dzzoffice目录下创建Dockerfile文件，内容如下：
+复制代码
+
+FROM php:5.6-apache
+
+RUN apt-get update && apt-get install -y \
+libfreetype6-dev \
+libjpeg62-turbo-dev \
+libmcrypt-dev \
+libpng12-dev \
+&& docker-php-ext-install -j$(nproc) mcrypt mysql\
+&& docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
+&& docker-php-ext-install -j$(nproc) gd
+
+COPY upload/ /var/www/html/
+RUN chown -R www-data:www-data /var/www/html/core/config /var/www/html/data
+复制代码
+
+5、进入image-dzzoffice目录下构建dzzoffice镜像
+
+cd image-dzzoffice
+docker build -t dzzoffice .
+
+6、启动dzzoffice镜像
+
+docker run --name dzzoffice --link mysql:mysql -d -p 80:80 dzzoffice
+
+7、浏览器中访问http://[宿主机IP]，开始初始化dzzoffice。
